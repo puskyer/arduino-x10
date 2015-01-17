@@ -30,7 +30,6 @@ void setup() {
 // prints X10 input, then get P1  on/off if unit code on input was 1
 void loop(){
 SX10.writeXTBIIR(16,STATUS_REQUEST);
-delay(500);
 SX10.debug();                       // print out the received command
 SX10.reset();
  delay(1000);
