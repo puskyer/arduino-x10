@@ -26,7 +26,7 @@ class x10 {
     x10(int zeroCrossingPin, int dataPin);
     // write command method:
     void write(byte houseCode, byte numberCode, int numRepeats);
-    void writeXTBIIR(byte ModeCode, byte numberCode);
+    void writeXTBIIR(byte ModeCode, byte numberCode, int numRepeats);
     int version(void);
     boolean received(void);
     byte unitCode(void);  // returns integer unit code

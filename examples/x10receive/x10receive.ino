@@ -29,6 +29,7 @@ void setup() {
 // A simple test program that demonstrates integrated send/receive
 // prints X10 input, then get P1  on/off if unit code on input was 1
 void loop(){
+SX10.write(HOUSE_P,UNIT_1,RPT_SEND);
 SX10.writeXTBIIR(16,STATUS_REQUEST);
 SX10.debug();                       // print out the received command
 SX10.reset();
