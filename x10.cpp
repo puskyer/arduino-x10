@@ -117,7 +117,6 @@ Code to program or get status of XTB IIR
 */
 void x10::writeXTBIIR(byte ModeCode, byte numberCode, int numRepeats) {
   byte startCode = B1110; 		// every X10 command starts with this
-  byte houseCode = B1100;		// XTB_IIR houseCOde is alway P
 					// All programming for XTB IIR begins with the key sequence 9-8-2
   byte Key_Sequence9 = B01110;		// 9
   byte Key_Sequence8 = B11010;		// 8
@@ -129,11 +128,8 @@ void x10::writeXTBIIR(byte ModeCode, byte numberCode, int numRepeats) {
   	// send the three parts of the command:
   sendBits(startCode, 4, true);
   sendBits(Key_Sequence9, 5, false);
-  delay(1000);
   sendBits(Key_Sequence8, 5, false);
-  delay(1000);
   sendBits(Key_Sequence2, 5, false);
-  delay(1000);
   sendBits(ModeCode, 5, false);
   sendBits(numberCode, 5, false);
   }
