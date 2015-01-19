@@ -27,7 +27,7 @@
  cs   10
  rs   9
  rst  8
- bkl  to 3.3v
+ bkl  to gnd
  MOSI - pin 11
  MISO - pin 12
  CLK -  pin 13
@@ -37,15 +37,13 @@
  
 #include "Arduino.h"                  // this is needed to compile with Rel. 0013
 #include <TFT.h>  // Arduino LCD library
-#include <Adafruit_GFX.h>
 #include <SPI.h>
-// #include <SD.h>
 #include <SdFat.h>
 #include <x10.h>                       // X10 lib is used for transmitting X10
 #include <x10constants.h>              // X10 Lib constants
 
-#define RPT_SEND 2
-#define nRPT_SEND 1
+#define RPT_SEND       2
+#define nRPT_SEND      1
 #define ZCROSS_PIN     2               // BLK pin 1 of PSC05
 #define RCVE_PIN       4               // GRN pin 3 of PSC05
 #define TRANS_PIN      5               // YEL pin 4 of PSC05
@@ -53,9 +51,10 @@
 
 
 // pin TFT definition for the Uno
-#define cs   10
-#define rs   9
+#define cs   10     //LCD Chipselect
+#define dc   9       // LCD Data or Command (rs)
 #define rst  8  
+#define bkl  7      //LCD Black Light
 
 
 // SD CS is pin 3. 
@@ -63,15 +62,15 @@
 // functions will not work.
 
 
-const int SdChipSelect = 3;
+const int SdChipSelect = 6;
 const int LCDchipSelect = 10;
 
+String message = " ";
+int mesgDelay = 0;
+int xcor = 0;
+int ycor = 0;
+
 #define FILE_BASE_NAME "file"
-
-
-
-// create an instance of the library
-TFT TFTscreen = TFT(cs, rs, rst);
 
 const uint8_t BASE_NAME_SIZE = sizeof(FILE_BASE_NAME) - 1;
 char fileName[13] = FILE_BASE_NAME "00.CSV";
@@ -82,90 +81,108 @@ SdFat sd;
 // Log file.
 SdFile file;
 
-void LCD_Serial_display(String message, int mesgDelay, int xcor, int ycor);
+x10 SX10= x10(ZCROSS_PIN,TRANS_PIN,RCVE_PIN,LED_PIN);   // set up a x10 library instance:
 
+TFT TFTscreen = TFT(cs, dc, rst);                       // set up a TFTscreen library instance:
 
-x10 SX10= x10(ZCROSS_PIN,TRANS_PIN,RCVE_PIN,LED_PIN);// set up a x10 library instance:
+// User Functions 
+void LCD_Serial_display(String message, int mesgDelay, int xcor, int ycor) {
+  
+   char msg[sizeof(message)];
+   message.toCharArray(msg, sizeof(message));
+
+   Serial.print(sizeof(message));
+   Serial.print(" ");
+   Serial.println(message);
+
+   // Print to to both Serial and TFT
+   TFTscreen.stroke(255,255,255);
+   TFTscreen.text(msg,xcor,ycor);
+   
+   // wait for a moment
+   delay(mesgDelay);
+   
+   // erase the text first
+   TFTscreen.stroke(0,0,0);
+   TFTscreen.text(msg,xcor,ycor);
+      
+}
 
 void setup() {
+  
+  // make sure that the default chip select pin is set to
+  // output, even if you don't use it:
+ pinMode(LCDchipSelect, OUTPUT);  // LCD CS 
+ pinMode(SdChipSelect, OUTPUT);   // SD CS
+ pinMode(bkl, OUTPUT);            // backlight select
   
    // Put this line at the beginning of every sketch that uses the GLCD:
   TFTscreen.begin();
 
+  // turn on the backlight
+  digitalWrite(bkl, LOW);
+ 
   // clear the screen with a black background
   TFTscreen.background(0, 0, 0);
-  delay(250);  // pause
-
-  // write the static text to the screen 
   // set the font color
-//  TFTscreen.stroke(255,255,255);  
+  TFTscreen.stroke(255,255,255);  
   // set the font size
   TFTscreen.setTextSize(1);
-  
   
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
    while (!Serial) {
     ; // wait for serial port to connect. Needed for Leonardo only
    }
-  
-    // char array to print to the screen
-
-String screenSizeHW = "screen height & width = ";
-char screenSizeC[40];   
-
-
+ 
+  String screenSizeHW = "screen height & width = ";
+      
   // Get the Width and Height.
   // set it up for the serial print
   screenSizeHW += String(TFTscreen.height());
   screenSizeHW += " , ";
   screenSizeHW += String(TFTscreen.width());
-  
-  // Set it up for the TFT LCD disaplay
-  screenSizeHW.toCharArray(screenSizeC, sizeof(screenSizeHW));
-  
-  // Print to to both Serial and TFT
- LCD_Serial_display(screenSizeHW, 2000 ,0,0);
 
- LCD_Serial_display("Initializing SD card...", 250 ,0,0);
-  
-  // make sure that the default chip select pin is set to
-  // output, even if you don't use it:
-   pinMode(LCDchipSelect, OUTPUT);   // LCD CS 
-   pinMode(SdChipSelect, OUTPUT);   // SD CS
-  
+  // Print to to both Serial and TFT
+  LCD_Serial_display(screenSizeHW,500,0,0);
+
+  LCD_Serial_display("Initializing SD card...",250,0,0);
+ 
   // see if the card is present and can be initialized:
   if (!sd.begin(SdChipSelect, SPI_HALF_SPEED)) {
     
-  LCD_Serial_display("Card failed, or not present\n ", 1000 ,0,0); 
+  LCD_Serial_display("Card Init failed or not present\n ",5000,0,0); 
  
      // don't do anything more:
     return;
   }
 
-    // Create CSV header 
-  if (file.open(fileName, O_CREAT | O_WRITE | O_EXCL)) {
+    // Open File and Create CSV header 
+  if (file.open(fileName, O_RDWR | O_CREAT | O_AT_END)) {
     file.println("X10 SC, HouseCode, UnitCode, FunctionCole");
-    file.close();
   }
   else
   {
    // problem opening file 
-    LCD_Serial_display("Error opening file ", 250,0,0); 
+    LCD_Serial_display("Error opening file ",5000,0,0); 
   // don't do anything more:
     return;  
   }
   
  // float fs = 0.000512*volFree*vol.blocksPerCluster();
   
-  LCD_Serial_display("card initialized.\n ", 250,0,0); 
+  LCD_Serial_display("SD card initialized.\n ",500,0,0); 
   
-  LCD_Serial_display("x10 receive/send test starting", 250,0,0);
-  
-   // Print only to TFT
+  LCD_Serial_display("x10 receive/send test starting",500,0,0);
+
+  // clear the screen with a black background
+  TFTscreen.background(0, 0, 0);
+  // write the static text to the screen 
+  // set the font color
   TFTscreen.stroke(255,255,255);
   // write the text to the top left corner of the screen
   TFTscreen.text("Value read: ",0,0);
+  
   // set the font size very large for the loop
   TFTscreen.setTextSize(1);
      
@@ -184,19 +201,23 @@ void loop(){
   String unitCodeString = ""; 
   String cmndCodeString = "";   
 
-  char TFTPrintoutstartCode[4];
-  char TFTPrintouthouseCode[5];  
-  char TFTPrintoutunitCode[5];
-  char TFTPrintoutcmndCode[12];
-  
+  char TFTPrintoutstartCode[10];
+  memset(TFTPrintoutstartCode,0,sizeof(TFTPrintoutstartCode));
+  char TFTPrintouthouseCode[10];
+  memset(TFTPrintouthouseCode,0,sizeof(TFTPrintouthouseCode));
+  char TFTPrintoutunitCode[10];
+  memset(TFTPrintoutunitCode,0,sizeof(TFTPrintoutunitCode));
+  char TFTPrintoutcmndCode[20];
+  memset(TFTPrintoutcmndCode,0,sizeof(TFTPrintoutcmndCode));
+
+//   get the codes from X10
+
   byte startCode = SX10.sc();
   byte houseCode = SX10.houseCode();
   byte unitCode = SX10.unitCode();
   byte cmndCode = SX10.cmndCode();  
-  
-  
-  
-  // create string for serial transmition 
+    
+// create string for serial transmition 
     dataString += "SC -"; 
     dataString += startCode;
     dataString += " HOUSE-";
@@ -205,86 +226,81 @@ void loop(){
     dataString += unitCode;
     dataString += " CMND ";
     dataString += cmndCode;    
-    
- // create char array for tft
-    startCodeString = String(startCode);
-    houseCodeString = String(houseCode);
-    unitCodeString = String(unitCode);
-    cmndCodeString = String(cmndCode);
-    
-    
-    startCodeString.toCharArray(TFTPrintoutstartCode, 4);
-    houseCodeString.toCharArray(TFTPrintouthouseCode, 5);
-    unitCodeString.toCharArray(TFTPrintoutunitCode, 5);    
-    cmndCodeString.toCharArray(TFTPrintoutcmndCode, 12);    
-    
-  // open the file. note that only one file can be open at a time,
-  // so you have to close this one before opening another.
-  // if the file is available, write to it:
-  if (file.open(fileName, O_CREAT | O_WRITE | O_EXCL)) {
-    file.println(dataString);
-    file.close();   
 
-    // Print to to both Serial and TFT
-     // set the font color
-    TFTscreen.stroke(255,255,255);
-    // print the sensor value
-    TFTscreen.text(TFTPrintoutstartCode,0, 20);
-    TFTscreen.text(TFTPrintouthouseCode,0, 30);
-    TFTscreen.text(TFTPrintoutunitCode,0, 40); 
-    TFTscreen.text(TFTPrintoutcmndCode,0, 40);  
+// display it to serial port
+
     Serial.println(dataString);
+
+// create char array for tft
+
+    startCodeString = "SC = ";
+    startCodeString += String(startCode);
+    houseCodeString = "HC = ";
+    houseCodeString += String(houseCode);
+    unitCodeString = "UC = ";
+    unitCodeString += String(unitCode);
+    cmndCodeString = "CC = ";
+    cmndCodeString += String(cmndCode);
     
-    // wait for 5 Sec
-    delay(5000);
+    Serial.println(startCodeString);
+    Serial.println(houseCodeString);
+    Serial.println(unitCodeString);
+    Serial.println(cmndCodeString);
+        
+    startCodeString.toCharArray(TFTPrintoutstartCode, sizeof(startCodeString));
+    houseCodeString.toCharArray(TFTPrintouthouseCode, sizeof(houseCodeString));
+    unitCodeString.toCharArray(TFTPrintoutunitCode, sizeof(unitCodeString));    
+    cmndCodeString.toCharArray(TFTPrintoutcmndCode, sizeof(cmndCodeString)); 
+    // Print to TFT
     
-    // erase the text you just wrote
+     // erase the old text 
     TFTscreen.stroke(0,0,0);
     TFTscreen.text(TFTPrintoutstartCode,0, 20);
     TFTscreen.text(TFTPrintouthouseCode,0, 30);
     TFTscreen.text(TFTPrintoutunitCode,0, 40); 
-    TFTscreen.text(TFTPrintoutcmndCode,0, 40);     
-   // if the file isn't open, pop up an error:
-  }
-  else {
+    TFTscreen.text(TFTPrintoutcmndCode,0, 50); 
+    
+     // set the font color
+    
+    TFTscreen.stroke(255,255,255);
+    
+    // print the sensor value
+    
+    TFTscreen.text(TFTPrintoutstartCode,0, 20);
+    TFTscreen.text(TFTPrintouthouseCode,0, 30);
+    TFTscreen.text(TFTPrintoutunitCode,0, 40); 
+    TFTscreen.text(TFTPrintoutcmndCode,0, 50);  
 
-    LCD_Serial_display("Problem opening file ", 5000,0,0);    
+// write to SD
+    
+   file.println(dataString);
+    // Force data to SD and update the directory entry to avoid data loss.
+    if (!file.sync() || file.getWriteError()) 
+    {
 
-  }  
-  
-SX10.write(HOUSE_P,UNIT_1,RPT_SEND);
-SX10.writeXTBIIR(16,STATUS_REQUEST,RPT_SEND);
-SX10.debug();                       // print out the received command
-SX10.reset();
- delay(1000);
+    String prob_string = "Sync or write problem with file ";
+    prob_string += fileName;
+    
+    LCD_Serial_display(prob_string, 5000,0,120);
+    digitalWrite(bkl, HIGH); 
+    return;
+    }
+
+    
+    // wait for 5 Sec
+    delay(5000);
+    
+     
+    //SX10.write(HOUSE_P,UNIT_1,RPT_SEND);
+    //SX10.writeXTBIIR(16,STATUS_REQUEST,RPT_SEND);
+    SX10.debug();                       // print out the received command
+    SX10.reset();
+    
 }
 
 
 
-// User Functions 
 
-void LCD_Serial_display(String message, int mesgDelay, int xcor, int ycor) {
-  
-     char msg[60];
-     message.toCharArray(msg, sizeof(message));
-  // Print to to both Serial and TFT
-   TFTscreen.stroke(255,255,255);
-   
-    // Ok SD Card initialised
-   TFTscreen.text(msg,xcor,ycor);
-   
-    // wait for a moment
-   delay(mesgDelay);
-   
-   
-   
-    // erase the text you just wrote
-   TFTscreen.stroke(0,0,0);
-   TFTscreen.text(msg,xcor,ycor);
-   Serial.println(sizeof(message));
-   Serial.println(message);
-   
-}
 
 
 
