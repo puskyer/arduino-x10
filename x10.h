@@ -33,6 +33,7 @@ class x10 {
     byte houseCode(void); // returns ascii A-P human readable house code
     byte uc(void);        // returns binary unit code (x10constants.h)
     byte hc(void);        // returns binary house code (x10constants.h)
+    byte sc(void);	  // returns binary start code
     byte cmndCode(void);
     void reset(void);
     void debug(void);

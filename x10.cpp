@@ -25,7 +25,7 @@ volatile unsigned int ZCrossCnt;   // counts Z crossings in frame
 volatile unsigned long rcveBuff;       // holds the 13 bits received in a frame
 volatile boolean X10rcvd;      // true if a new frame has been received
 boolean _newX10;         // both the unit frame and the command frame received
-byte _houseCode,_unitCode,_cmndCode;   //
+byte _houseCode,_unitCode,_cmndCode,_startCode;   //
 byte _hc,_uc;
 byte startCode;
 byte zcross_pin;
@@ -256,6 +256,11 @@ byte x10::cmndCode(void)
 {
   return _cmndCode;
 }
+byte x10::sc(void)
+{
+  return _startCode;
+}
+
 
 void x10::Check_Rcvr(){    // ISR - called when zero crossing (on CHANGE)
   if (X10BitCnt == 0) {                // looking for new frame
@@ -317,6 +322,8 @@ void x10::Parse_Frame() {   // parses the receive buffer to get House, Unit, and
   }
   rcveBuff = rcveBuff >> 4;            // shift the start code down to LSB
   startCode = rcveBuff & 0x0F;         // mask the last 4 bits to get the start code
+  // added return for start code
+  _startCode = startCode;
   X10rcvd = false;                     // reset status
 }
 #else
