@@ -16,18 +16,15 @@
  ** MOSI - pin 11
  ** MISO - pin 12
  ** CLK -  pin 13
-
- SD CS is pin 3.
-
+ ** SD CS -  pin 2
  LCD CS pin 10. must be left as an output or the SD library
  functions will not work.
 
  pins for TFT definition for the Uno
-
- cs   10
- rs   9
- rst  8
- bkl  to gnd
+ cs   - pin 10
+ rs   - pin 9
+ rst  - pin 8
+ bkl  - pin 7
  MOSI - pin 11
  MISO - pin 12
  CLK -  pin 13
@@ -36,11 +33,12 @@
 
 
 #include "Arduino.h"                  // this is needed to compile with Rel. 0013
+#include "x10.h"                       // X10 lib is used for transmitting X10
+#include <x10constants.h>              // X10 Lib constants
+#include <XTB-IIR2.h>
 #include <TFT.h>  		      // Arduino LCD library
 #include <SPI.h>
 #include <SdFat.h>
-#include "x10.h"                       // X10 lib is used for transmitting X10
-#include "x10constants.h"              // X10 Lib constants
 
 #define RPT_SEND       2
 #define nRPT_SEND      1
@@ -49,21 +47,23 @@
 #define TRANS_PIN      5               // YEL pin 4 of PSC05
 #define LED_PIN        13              // for testing
 
-
 // pin TFT definition for the Uno
 #define cs   10     //LCD Chipselect
-#define dc   9       // LCD Data or Command (rs)
+#define dc   9      // LCD Data or Command (rs)
 #define rst  8
-#define bkl  7      //LCD Black Light
+#define bkl  7      // LCD Black Light
 
-
-// SD CS is pin 3.
-// LCD CS pin 10. must be left as an output or the SD library
-// functions will not work.
-
-
-const int SdChipSelect = 3;
+const int SdChipSelect = 2;
 const int LCDchipSelect = 10;
+
+
+// For example, with the Ethernet shield, set DISABLE_CHIP_SELECT
+// to 10 to disable the Ethernet controller.
+const int8_t DISABLE_CHIP_SELECT = -1;// Set DISABLE_CHIP_SELECT to disable a second SPI device.
+// For example, with the Ethernet shield, set DISABLE_CHIP_SELECT
+// to 10 to disable the Ethernet controller.
+const int8_t DISABLE_CHIP_SELECT = -1;
+
 
 String message = " ";
 int mesgDelay = 0;
@@ -151,7 +151,7 @@ void setup() {
   LCD_Serial_display("Initializing SD card...",250,0,0);
 
   // see if the card is present and can be initialized:
-  if (!sd.begin(SdChipSelect, SPI_HALF_SPEED)) {
+  if (!sd.begin(SdChipSelect,SPI_HALF_SPEED)) {
 
   LCD_Serial_display("Card Init failed or not present\n ",5000,0,0);
 
@@ -193,34 +193,29 @@ void setup() {
 // A simple test program that demonstrates integrated send/receive
 // prints X10 input, then get P1  on/off if unit code on input was 1
 void loop(){
+ 
+
+//for (int i=0; i <= 15; i++) {
+
+//    SX10.write(HOUSE_P,UNIT_9,nRPT_SEND);
+//    SX10.write(HOUSE_P,UNIT_8,nRPT_SEND);
+//    SX10.write(HOUSE_P,UNIT_2,nRPT_SEND);
+//    SX10.write(HOUSE_P,Mode[i],nRPT_SEND);
+//    SX10.write(HOUSE_P,STATUS_REQUEST,nRPT_SEND);
 
 
-  if (SX10.received()) {                         // received a new command
+    SX10.write(HOUSE_A,UNIT_5,RPT_SEND);
+    SX10.write(HOUSE_A,ON,RPT_SEND);
+
     SX10.debug();                       // print out the received command
-    SX10.write(HOUSE_P,UNIT_9,RPT_SEND);
-    SX10.write(HOUSE_P,UNIT_8,RPT_SEND);
-    SX10.write(HOUSE_P,UNIT_2,RPT_SEND);
-    SX10.write(HOUSE_P,UNIT_16,RPT_SEND);
-    SX10.write(HOUSE_P,STATUS_REQUEST,RPT_SEND);
+
+
+ if (SX10.received()) {                 // received a new command
+
     SX10.debug();                       // print out the received command
 
 // make a string for assembling the data to log:
     String dataString = "";
-
-    // char array to print to the screen
-    String startCodeString = "";
-    String houseCodeString = "";
-    String unitCodeString = "";
-    String cmndCodeString = "";
-
-    char TFTPrintoutstartCode[10];
-    memset(TFTPrintoutstartCode,0,sizeof(TFTPrintoutstartCode));
-    char TFTPrintouthouseCode[10];
-    memset(TFTPrintouthouseCode,0,sizeof(TFTPrintouthouseCode));
-    char TFTPrintoutunitCode[10];
-    memset(TFTPrintoutunitCode,0,sizeof(TFTPrintoutunitCode));
-    char TFTPrintoutcmndCode[20];
-    memset(TFTPrintoutcmndCode,0,sizeof(TFTPrintoutcmndCode));
 
 //   get the codes from X10
 
@@ -243,6 +238,22 @@ void loop(){
 
     Serial.println(dataString);
 
+// char array to print to the screen
+
+    String startCodeString = "";
+    String houseCodeString = "";
+    String unitCodeString = "";
+    String cmndCodeString = "";
+
+    char TFTPrintoutstartCode[10];
+    memset(TFTPrintoutstartCode,0,sizeof(TFTPrintoutstartCode));
+    char TFTPrintouthouseCode[10];
+    memset(TFTPrintouthouseCode,0,sizeof(TFTPrintouthouseCode));
+    char TFTPrintoutunitCode[10];
+    memset(TFTPrintoutunitCode,0,sizeof(TFTPrintoutunitCode));
+    char TFTPrintoutcmndCode[20];
+    memset(TFTPrintoutcmndCode,0,sizeof(TFTPrintoutcmndCode));
+
 // create char array for tft
 
     startCodeString = "SC = ";
@@ -263,20 +274,21 @@ void loop(){
     houseCodeString.toCharArray(TFTPrintouthouseCode, sizeof(houseCodeString));
     unitCodeString.toCharArray(TFTPrintoutunitCode, sizeof(unitCodeString));
     cmndCodeString.toCharArray(TFTPrintoutcmndCode, sizeof(cmndCodeString));
-    // Print to TFT
 
-     // erase the old text
+// Print to TFT
+
+// erase the old text
     TFTscreen.stroke(0,0,0);
     TFTscreen.text(TFTPrintoutstartCode,0, 20);
     TFTscreen.text(TFTPrintouthouseCode,0, 30);
     TFTscreen.text(TFTPrintoutunitCode,0, 40);
     TFTscreen.text(TFTPrintoutcmndCode,0, 50);
 
-     // set the font color
+// set the font color
 
     TFTscreen.stroke(255,255,255);
 
-    // print the sensor value
+// print the sensor value
 
     TFTscreen.text(TFTPrintoutstartCode,0, 20);
     TFTscreen.text(TFTPrintouthouseCode,0, 30);
@@ -298,15 +310,28 @@ void loop(){
     return;
     }
 
+
     SX10.reset();
 
    // wait for 1 minute
    // save the start time
-    unsigned long startMillis = millis();
 
-    if(currentMillis - startMillis > interval) {
-      unsigned long currentMillis = millis();
+//    unsigned long startMillis = millis();
+//    unsigned long currentMillis = millis();
+
+//    if(currentMillis - startMillis > interval) {
+//     unsigned long currentMillis = millis();
+//    }
     }
-  }
+ 
+//    LCD_Serial_display(String(Mode[i]),1000,0,10);
+      delay(5000);
+
+    SX10.write(HOUSE_A,UNIT_5,RPT_SEND);
+    SX10.write(HOUSE_A,OFF,RPT_SEND);
+
+      delay(5000);
+
+//  }
 
 }
