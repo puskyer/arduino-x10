@@ -150,6 +150,9 @@ void setup() {
 
   LCD_Serial_display("Initializing SD card...",250,0,0);
 
+ // make sure the LCDChipSelect is disabled
+  digitalWrite(LCDchipSelect, HIGH);
+
   // see if the card is present and can be initialized:
   if (!sd.begin(SdChipSelect,SPI_HALF_SPEED)) {
 
@@ -193,24 +196,17 @@ void setup() {
 // A simple test program that demonstrates integrated send/receive
 // prints X10 input, then get P1  on/off if unit code on input was 1
 void loop(){
- 
-
-//for (int i=0; i <= 15; i++) {
-
-//    SX10.write(HOUSE_P,UNIT_9,nRPT_SEND);
-//    SX10.write(HOUSE_P,UNIT_8,nRPT_SEND);
-//    SX10.write(HOUSE_P,UNIT_2,nRPT_SEND);
-//    SX10.write(HOUSE_P,Mode[i],nRPT_SEND);
-//    SX10.write(HOUSE_P,STATUS_REQUEST,nRPT_SEND);
 
 
-    SX10.write(HOUSE_A,UNIT_5,RPT_SEND);
-    SX10.write(HOUSE_A,ON,RPT_SEND);
+ for (int i=0; i <= 15; i++) {
 
-    SX10.debug();                       // print out the received command
+    SX10.write(HOUSE_P,UNIT_9,nRPT_SEND);
+    SX10.write(HOUSE_P,UNIT_8,nRPT_SEND);
+    SX10.write(HOUSE_P,UNIT_2,nRPT_SEND);
+    SX10.write(HOUSE_P,Mode[i],nRPT_SEND);
+    SX10.write(HOUSE_P,STATUS_REQUEST,nRPT_SEND);
 
-
- if (SX10.received()) {                 // received a new command
+  if (SX10.received()) {                 // received a new command
 
     SX10.debug();                       // print out the received command
 
@@ -223,6 +219,8 @@ void loop(){
     byte houseCode = SX10.houseCode();
     byte unitCode = SX10.unitCode();
     byte cmndCode = SX10.cmndCode();
+
+    SX10.reset();
 
 // create string for serial transmition
     dataString += "SC -";
@@ -255,7 +253,7 @@ void loop(){
     memset(TFTPrintoutcmndCode,0,sizeof(TFTPrintoutcmndCode));
 
 // create char array for tft
-
+digitalWrite
     startCodeString = "SC = ";
     startCodeString += String(startCode);
     houseCodeString = "HC = ";
@@ -310,28 +308,21 @@ void loop(){
     return;
     }
 
-
-    SX10.reset();
-
    // wait for 1 minute
    // save the start time
 
-//    unsigned long startMillis = millis();
-//    unsigned long currentMillis = millis();
+    unsigned long startMillis = millis();
+    unsigned long currentMillis = millis();
 
-//    if(currentMillis - startMillis > interval) {
-//     unsigned long currentMillis = millis();
-//    }
+    if(currentMillis - startMillis > interval) {
+     unsigned long currentMillis = millis();
     }
- 
-//    LCD_Serial_display(String(Mode[i]),1000,0,10);
-      delay(5000);
 
-    SX10.write(HOUSE_A,UNIT_5,RPT_SEND);
-    SX10.write(HOUSE_A,OFF,RPT_SEND);
+   }
 
-      delay(5000);
+    LCD_Serial_display(String(Mode[i]),1000,0,10);
 
-//  }
+
+  }
 
 }
