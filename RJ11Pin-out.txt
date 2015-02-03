@@ -1,0 +1,5 @@
+      Pin                             Signal
+RJ11  1 Yellow to Arduino pin 6       Zero Crossing Detect
+RJ11  2 Green to Arduino Gnd pin      Ground
+RJ11  3 Red to Arduino pin 4          RX Data
+RJ11  4 Black to Arduino pin 5        TX Data
